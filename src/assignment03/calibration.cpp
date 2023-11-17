@@ -2,6 +2,9 @@
 #include "game.hpp"
 #include "../framework/kinect.hpp"
 
+#include <iostream>
+using namespace std;
+
 HomograpyCalibrator::HomograpyCalibrator()
 {
     initialize();
@@ -49,6 +52,26 @@ void HomograpyCalibrator::computeHomography()
      * GOES HERE *
      *~~~~~~~~~~~*/
 
+	cout << "canvas size: " << m_canvas.cols << " " << m_canvas.rows << endl;
+	cout << "camera corners: " << cameraCorners()[0] << " " << cameraCorners()[2] << endl;
+	cout << "projector corners: " << projectorCorners()[0] << " " << projectorCorners()[2] << endl;
+
+	// scaling 
+
+	// kinect depth frame resolution
+	// 640, 480
+	vector<cv::Point2f> scaledCameraCorners = vector<cv::Point2f>();
+	for (auto corner : cameraCorners()) {
+		scaledCameraCorners.push_back(cv::Point2f(
+			corner.x * 640 / m_canvas.cols,
+			corner.y * 480 / m_canvas.rows
+		));
+	}
+
+	m_cameraToGame = cv::getPerspectiveTransform(scaledCameraCorners, Game::gameCorners());
+	m_gameToProjector = cv::getPerspectiveTransform(Game::gameCorners(), projectorCorners());
+	
+
     // You should assign something to m_cameraToGame and m_gameToProjector.
     // For this, you can use cameraCorners(), projectorCorners() and Game::gameCorners().
     // Tip: The camera and projector corners are given in window resolution (probably something like 800x600, check this using m_canvas.cols/rows),
@@ -61,7 +84,19 @@ cv::Point2f HomograpyCalibrator::cameraToGame(const cv::Point2f& point) const
      * YOUR CODE *
      * GOES HERE *
      *~~~~~~~~~~~*/
-	return cv::Point2f();
+
+	cv::Mat point_mat = cv::Mat(3, 1, CV_64F);
+	point_mat.at<double>(0, 0) = point.x;
+	point_mat.at<double>(1, 0) = point.y;
+	point_mat.at<double>(2, 0) = 1.0f;
+
+	point_mat = m_cameraToGame * point_mat;
+	
+	double w = point_mat.at<double>(2, 0);
+	double x = point_mat.at<double>(0, 0) / w;
+	double y = point_mat.at<double>(1, 0) / w;
+	return cv::Point2f(x, y);
+
     // Use m_cameraToGame to transform the point.
     // Tip: You can only multiply matrices with each other in OpenCV, so you'll have to build one (or build a cv::Vec3 and convert that).
     // Also, matrix multiplication isn't commutative.
@@ -75,6 +110,7 @@ void HomograpyCalibrator::gameToProjector(const cv::Mat& input, cv::Mat& output)
      *~~~~~~~~~~~*/
 
     // Use m_gameToProjector to transform the image.
+	cv::warpPerspective(input, output, m_gameToProjector, output.size());
 }
 
 std::string HomograpyCalibrator::windowName()

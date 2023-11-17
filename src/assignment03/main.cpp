@@ -2,9 +2,12 @@
 #include "../assignment01/touchRecognizer.hpp"
 #include "calibration.hpp"
 #include "game.hpp"
+#include <iostream>
 
 #include <opencv2/opencv.hpp>
 #include "multitouchGameControl.hpp"
+
+using namespace std;
 
 int main()
 {
@@ -66,7 +69,7 @@ int main()
         // update and draw game
 		else
 		{
-		    if(!game.initialized())
+			if(!game.initialized())
 		    {
 		        game.initialize();
 		    }
@@ -96,7 +99,8 @@ int main()
             running = false;
             break;
 		case 0x0d: // enter
-            touchRecognizer.calibrate(depthFrameUnscaled);
+			kinect.getDepthFrame(depthFrame);
+            touchRecognizer.calibrate(depthFrame);
             break;
 		case 0x20: // space
             game.start();
